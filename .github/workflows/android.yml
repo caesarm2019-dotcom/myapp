@@ -22,47 +22,64 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          # Delete package-lock to avoid platform-specific optional dependency mismatch
           rm -f package-lock.json
           npm install --legacy-peer-deps --include=optional
 
       - name: Build Web Application
         run: npm run build
 
+      # 🔥 توليد الأيقونات (أهم خطوة)
+      - name: Generate App Icons
+        run: |
+          npm install @capacitor/assets --save-dev
+          npx capacitor-assets generate
+
+      # 🔄 مزامنة Capacitor
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      # ☕ إعداد Java
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '21'
 
-      - name: Sync Capacitor Assets
-        run: npx cap sync android
-
-      - name: Build Android App (APK & AAB for Google Play)
+      # 🧹 تنظيف build
+      - name: Clean Android Build
         run: |
           cd android
           chmod +x gradlew
+          ./gradlew clean
+
+      # 📦 بناء التطبيق
+      - name: Build Android App (APK & AAB)
+        run: |
+          cd android
           echo "Starting assembleDebug..."
           if ! ./gradlew assembleDebug > assemble_debug.log 2>&1; then
-            echo "=== ASSEMBLE DEBUG FAILED (LAST 200 LINES) ==="
+            echo "=== ASSEMBLE DEBUG FAILED ==="
             tail -n 200 assemble_debug.log
             exit 1
           fi
+
           echo "Starting bundleRelease..."
           if ! ./gradlew bundleRelease > bundle_release.log 2>&1; then
-            echo "=== BUNDLE RELEASE FAILED (LAST 200 LINES) ==="
+            echo "=== BUNDLE RELEASE FAILED ==="
             tail -n 200 bundle_release.log
             exit 1
           fi
 
-      - name: Upload Debug APK (For Testing)
+      # 📤 رفع APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: souq-iraq-debug-apk
+          name: app-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Upload Release AAB (For Google Play)
+      # 📤 رفع AAB
+      - name: Upload Release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: souq-iraq-release-aab
+          name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
